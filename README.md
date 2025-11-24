@@ -21,7 +21,7 @@ Lightweight Flask app that captures webcam frames in the browser, sends them to 
 2) Create env: `python -m venv .venv && source .venv/bin/activate`
 3) Install deps: `pip install -r requirements.txt`
 4) Initialize DB: `python scripts/init_db.py` (creates `helmet_monitor.db`)
-5) Run dev server: `python app.py` then open `http://localhost:5000/`
+5) Run dev server: `python app.py` then open `http://localhost:8000/`
 
 ## Usage
 - Camera page (`/`): allow webcam, set interval/site, click Start. Frames are posted to `/api/predict`.
