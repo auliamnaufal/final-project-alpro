@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    result TEXT NOT NULL,
+    confidence REAL NOT NULL,
+    site TEXT NOT NULL DEFAULT 'Unknown',
+    image_path TEXT
+);
