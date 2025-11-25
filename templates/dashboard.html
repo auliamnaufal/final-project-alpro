@@ -1,46 +1,311 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Safety Helmet Monitor - Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety Helmet Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #14142b;       
+            --card-dark: #1c1c36;     
+            --text-main: #ffffff;
+            --text-muted: #a0a5b9;
+            --accent-green: #00e096;  
+            --accent-red: #ff3d71;    
+            --accent-purple: #8833ff; 
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', sans-serif;
+            padding-bottom: 50px;
+        }
+
+        .navbar {
+            background-color: var(--card-dark) !important;
+            border-bottom: 1px solid #2f2f4f;
+        }
+        .navbar-brand { color: var(--text-main) !important; font-weight: bold; }
+        .nav-link { color: var(--text-muted) !important; }
+        .nav-link.active { color: var(--text-main) !important; font-weight: bold; }
+
+        .card {
+            background-color: var(--card-dark);
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            color: var(--text-main);
+        }
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid #2f2f4f;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+        
+        h2.metric-value { 
+            font-size: 2.5rem; 
+            font-weight: bold; 
+            margin-bottom: 0; 
+            color: #ffffff !important; 
+        }
+        
+        .metric-label { 
+            color: var(--text-muted) !important; 
+            font-size: 0.9rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+        .card .text-muted { color: var(--text-muted) !important; }
+        .text-green { color: var(--accent-green) !important; }
+        .text-red { color: var(--accent-red) !important; }
+
+        .snapshot-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid var(--accent-red);
+            transition: transform 0.2s;
+        }
+        .snapshot-img:hover { transform: scale(1.05); }
+
+        .table { color: var(--text-muted); border-color: #2f2f4f; }
+        .table-hover tbody tr:hover { color: #fff; background-color: rgba(255,255,255,0.05); }
+        .table thead th { 
+            background-color: #262645; 
+            border: none; 
+            color: var(--text-main); 
+        }
+        .table td, .table th { border-bottom: 1px solid #2f2f4f; vertical-align: middle; background-color: transparent; color: var(--text-muted); }
+        
+        .badge-danger { background-color: rgba(255, 61, 113, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        .badge-success { background-color: rgba(0, 224, 150, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .badge-warning { background-color: rgba(136, 51, 255, 0.2); color: var(--accent-purple); border: 1px solid var(--accent-purple); }
+    </style>
 </head>
 <body>
-  <nav>
-    <a href="/">Camera</a> |
-    <a href="/dashboard">Dashboard</a>
-  </nav>
 
-  <h1>Dashboard</h1>
-  <section>
-    <p>Aggregated stats from recent snapshots.</p>
-    <div>
-      <p>Total events (7d): <span id="total-events">0</span></p>
-      <p>No-helmet ratio: <span id="no-helmet-ratio">0</span></p>
-      <p>Average confidence: <span id="avg-confidence">0</span></p>
+    <nav class="navbar navbar-expand-lg mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">Safety Helmet Monitor</a>
+            <div class="d-flex">
+                <a href="/" class="btn btn-outline-light btn-sm me-2">Camera</a>
+                <a href="/dashboard" class="btn btn-light btn-sm">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <p class="metric-label">Total Events (7d)</p>
+                    <h2 class="metric-value" id="total-events">-</h2>
+                    <small class="text-muted">Captured detections</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <p class="metric-label">No-Helmet Ratio</p>
+                    <h2 class="metric-value text-red" id="no-helmet-ratio">-</h2>
+                    <small class="text-muted">Percentage of violations</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <p class="metric-label">Average Confidence</p>
+                    <h2 class="metric-value text-green" id="avg-confidence">-</h2>
+                    <small class="text-muted">Model accuracy score</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card p-3" style="min-height: 400px;"> <div class="card-header">Trend by Time (Last 24h)</div>
+                    <div class="card-body">
+                        <canvas id="trendChart" height="350"></canvas> 
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3" style="min-height: 400px;"> <div class="card-header">Result Composition</div>
+                    <div class="card-body">
+                        <canvas id="compositionChart" height="350"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-3">
+            <div class="card-header d-flex justify-content-between">
+                <span>Latest No-Helmet Snapshots</span>
+                <small class="text-muted">Real-time captures</small>
+            </div>
+            <div class="card-body">
+                <div class="row" id="snapshot-gallery">
+                    <div class="col-12 text-center text-muted py-4">Loading snapshots...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-3">
+            <div class="card-header">Recent Events</div>
+            <div class="table-responsive">
+                <table class="table table-hover mt-2">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Result</th>
+                            <th>Confidence</th>
+                            <th>Site</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
-    <h2>Trend (last 24h)</h2>
-    <pre id="trend"></pre>
+    <script>
+        const colors = {
+            green: '#00e096',
+            red: '#ff3d71',
+            purple: '#8833ff',
+            text: '#a0a5b9',
+            grid: '#2f2f4f'
+        };
 
-    <h2>Result Composition</h2>
-    <pre id="composition"></pre>
+        let trendChartInstance = null;
+        let compChartInstance = null;
 
-    <h2>Recent Events</h2>
-    <table border="1" cellpadding="4">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Result</th>
-          <th>Confidence</th>
-          <th>Site</th>
-          <th>Image</th>
-        </tr>
-      </thead>
-      <tbody id="recent-events"></tbody>
-    </table>
-  </section>
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        trendChartInstance = new Chart(ctxTrend, {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: colors.text } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: colors.text } },
+                    y: { grid: { color: colors.grid }, ticks: { color: colors.text }, beginAtZero: true }
+                }
+            }
+        });
 
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+        const ctxComp = document.getElementById('compositionChart').getContext('2d');
+        compChartInstance = new Chart(ctxComp, {
+            type: 'doughnut',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: { legend: { position: 'bottom', labels: { color: colors.text } } },
+                elements: { arc: { borderWidth: 0 } }
+            }
+        });
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                if (!response.ok) throw new Error("API Error");
+                
+                const data = await response.json();
+
+                const total = data.total_events || 0;
+                const ratio = data.no_helmet_ratio || 0;
+                const conf = data.average_confidence || 0;
+
+                document.getElementById('total-events').innerText = total.toLocaleString();
+                document.getElementById('no-helmet-ratio').innerText = (ratio * 100).toFixed(1) + '%';
+                document.getElementById('avg-confidence').innerText = conf.toFixed(2);
+
+                const trendData = data.trend || [];
+                if (trendData.length > 0) {
+                    trendChartInstance.data.labels = trendData.map(t => t.hour + ':00');
+                    trendChartInstance.data.datasets = [
+                        { label: 'Total', data: trendData.map(t => t.total), backgroundColor: colors.green, borderRadius: 4 },
+                        { label: 'No-Helmet', data: trendData.map(t => t.no_helmet), backgroundColor: colors.red, borderRadius: 4 }
+                    ];
+                } else {
+                    trendChartInstance.data.labels = ["No Data"];
+                    trendChartInstance.data.datasets = [{ label: "Empty", data: [0], backgroundColor: "#333" }];
+                }
+                trendChartInstance.update();
+
+                const compData = data.composition || {};
+                const compLabels = Object.keys(compData).map(k => k.replace('_', ' ').toUpperCase());
+                const compValues = Object.values(compData).map(v => (v * 100).toFixed(1));
+
+                if (compLabels.length > 0) {
+                    compChartInstance.data.labels = compLabels;
+                    compChartInstance.data.datasets = [{ data: compValues, backgroundColor: [colors.red, colors.purple, colors.green] }];
+                } else {
+                    compChartInstance.data.labels = ["No Data"];
+                    compChartInstance.data.datasets = [{ data: [1], backgroundColor: ["#2c2c2c"] }];
+                }
+                compChartInstance.update();
+
+                const recentEvents = data.recent_events || [];
+                const galleryDiv = document.getElementById('snapshot-gallery');
+                const violations = recentEvents.filter(e => e.result === 'no_helmet' && e.image_path).slice(0, 3);
+                
+                if (violations.length > 0) {
+                    galleryDiv.innerHTML = violations.map(v => `
+                        <div class="col-md-4 mb-3">
+                            <div class="position-relative">
+                                <img src="/uploads/${v.image_path}" class="snapshot-img" alt="Violation">
+                                <span class="position-absolute top-0 start-0 badge bg-danger m-2">${v.site}</span>
+                                <span class="position-absolute bottom-0 end-0 badge bg-dark m-2">${(v.confidence*100).toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    galleryDiv.innerHTML = '<div class="col-12 text-center text-muted py-4">No violations yet.</div>';
+                }
+
+                const tableBody = document.getElementById('recent-table-body');
+                tableBody.innerHTML = '';
+                if (recentEvents.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No events recorded.</td></tr>';
+                } else {
+                    recentEvents.forEach(ev => {
+                        let badgeClass = 'badge-warning'; 
+                        if(ev.result === 'helmet') badgeClass = 'badge-success';
+                        if(ev.result === 'no_helmet') badgeClass = 'badge-danger';
+                        
+                        const dateStr = ev.created_at ? new Date(ev.created_at).toLocaleString() : '-';
+                        const imgLink = ev.image_path ? `<a href="/uploads/${ev.image_path}" target="_blank" class="btn btn-outline-light btn-sm">View</a>` : '-';
+
+                        tableBody.innerHTML += `
+                            <tr>
+                                <td>${dateStr}</td>
+                                <td><span class="badge ${badgeClass} p-2">${(ev.result || '?').toUpperCase()}</span></td>
+                                <td>${(ev.confidence || 0).toFixed(2)}</td>
+                                <td>${ev.site || 'Unknown'}</td>
+                                <td>${imgLink}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+            } catch (err) { console.log("Waiting for API..."); }
+        }
+
+        document.addEventListener('DOMContentLoaded', updateDashboard);
+        setInterval(updateDashboard, 5000);
+    </script>
 </body>
 </html>
