@@ -18,8 +18,9 @@ async function setupCamera() {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { width: 640, height: 360 }
         });
+
         video.srcObject = stream;
-        
+
         video.onloadedmetadata = () => {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -28,13 +29,17 @@ async function setupCamera() {
     } catch (err) {
         console.error(err);
         errorMsg.innerText = 'Camera access denied. Please use HTTPS or localhost.';
+        throw err;
     }
 }
 
 async function sendFrame() {
-    if (!isRunning) return;
+    if (!isRunning || !video.videoWidth) return;
 
-    if (canvas.width !== video.videoWidth && video.videoWidth > 0) {
+    if (
+        canvas.width !== video.videoWidth ||
+        canvas.height !== video.videoHeight
+    ) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
     }
@@ -47,21 +52,30 @@ async function sendFrame() {
     try {
         const res = await fetch('/api/predict', {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
-                image: imageBase64, 
-                site: siteVal 
+            body: JSON.stringify({
+                image: imageBase64,
+                site: siteVal
             })
         });
 
-        if (!res.ok) throw new Error(Server error ${res.status});
+        if (!res.ok) {
+            throw new Error(`Server error ${res.status}`);
+        }
+
         const data = await res.json();
-        updateUI(data.result, data.confidence);
+
+        updateUI(
+            data.result || data.label || '-',
+            data.confidence ?? '-'
+        );
+
         errorMsg.innerText = '';
     } catch (err) {
         console.error(err);
+        errorMsg.innerText = err.message || 'Prediction failed';
     }
 }
 
@@ -70,49 +84,50 @@ function updateUI(result, confidence) {
         confidence = confidence.toFixed(2);
     }
 
-    resText.innerText = result || '-';
-    resConf.innerText = confidence || '-';
+    resText.innerText = result;
+    resConf.innerText = confidence;
 
-    if (result === 'No Helmet') {
-        resText.className = 'metric-value text-red';
-        resConf.className = 'metric-value text-red';
-    } else {
-        resText.className = 'metric-value text-green';
-        resConf.className = 'metric-value text-green';
-    }
+    const isNoHelmet = result === 'No Helmet';
+
+    resText.className = `metric-value ${isNoHelmet ? 'text-red' : 'text-green'}`;
+    resConf.className = `metric-value ${isNoHelmet ? 'text-red' : 'text-green'}`;
 }
 
 btnToggle.addEventListener('click', async () => {
     if (!isRunning) {
-        await setupCamera();
-        try { await video.play(); } catch(e){}
-        
-        isRunning = true;
-        btnToggle.innerText = 'Stop';
-        btnToggle.style.backgroundColor = 'var(--accent-red)';
-        btnToggle.style.color = 'white';
+        try {
+            await setupCamera();
+            await video.play();
 
-        sendFrame(); 
-        intervalId = setInterval(sendFrame, sendInterval);
+            isRunning = true;
+            btnToggle.innerText = 'Stop';
+            btnToggle.style.backgroundColor = 'var(--accent-red)';
+            btnToggle.style.color = 'white';
 
+            sendFrame();
+            intervalId = setInterval(sendFrame, sendInterval);
+        } catch {
+
+        }
     } else {
         isRunning = false;
-        
+
         if (video.srcObject) {
-            video.srcObject.getTracks().forEach(t => t.stop());
+            video.srcObject.getTracks().forEach(track => track.stop());
             video.srcObject = null;
         }
-        
+
+        clearInterval(intervalId);
+
         placeholderText.style.display = 'block';
         btnToggle.innerText = 'Activate';
         btnToggle.style.backgroundColor = 'var(--accent-green)';
         btnToggle.style.color = '#1c1c36';
 
-        clearInterval(intervalId);
-    
         resText.innerText = '-';
         resConf.innerText = '-';
         resText.className = 'metric-value text-green';
+        resConf.className = 'metric-value text-green';
     }
 });
 
@@ -128,5 +143,8 @@ document.getElementById('btn-save').addEventListener('click', () => {
     const btn = document.getElementById('btn-save');
     const oldText = btn.innerText;
     btn.innerText = 'Saved';
-    setTimeout(() => btn.innerText = oldText, 1000);
+
+    setTimeout(() => {
+        btn.innerText = oldText;
+    }, 1000);
 });
