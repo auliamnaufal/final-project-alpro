@@ -10,8 +10,8 @@ app.mount("/screenshots", StaticFiles(directory="../backend_fastapi/screenshots"
 
 templates = Jinja2Templates(directory="templates")
 
-BACKEND_URL = "ws://localhost:9000/yolo"
-BACKEND_API = "http://localhost:9000/api"
+BACKEND_URL = "ws://127.0.0.1:8000/yolo"
+BACKEND_API = "http://127.0.0.1:8000/api"
 
 @app.get("/")
 def index(request: Request):

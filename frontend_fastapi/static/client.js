@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusText = document.getElementById("status");
     const latestImg = document.getElementById("latest");
 
-    const ws = new WebSocket("ws://localhost:8000/frontend");
+    const ws = new WebSocket("ws://127.0.0.1:8000/yolo");
 
     // OPEN CAMERA
     navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
