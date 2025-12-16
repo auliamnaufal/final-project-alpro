@@ -1,5 +1,6 @@
 import base64
 import os
+from contextlib import suppress
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List
@@ -20,7 +21,8 @@ class SnapshotService:
     def process_snapshot(self, image_b64: str, site: str = "Unknown") -> Dict:
         image_bytes, ext = self._decode_image(image_b64)
         prediction = self.model_service.predict(image_bytes)
-        filename = self._save_image(image_bytes, ext)
+        should_save_image = (prediction.get("label") or "").lower() != "helmet"
+        filename = self._save_image(image_bytes, ext) if should_save_image else None
 
         snapshot = Snapshot(
             result=prediction["label"],
@@ -122,3 +124,14 @@ class SnapshotService:
         )
         total = sum(count for _, count in counts) or 1
         return {label: round(count / total, 3) for label, count in counts}
+
+    def clear_all(self, delete_files: bool = True) -> None:
+        """Remove all snapshot records and optionally delete saved images."""
+        Snapshot.query.delete()
+        db.session.commit()
+
+        if delete_files and self.upload_dir.exists():
+            for file_path in self.upload_dir.glob("*"):
+                if file_path.is_file():
+                    with suppress(Exception):
+                        file_path.unlink()
