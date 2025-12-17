@@ -264,18 +264,15 @@
                 const violations = recentEvents.filter(e => e.result === 'no_helmet' && e.image_path).slice(0, 3);
                 
                 if (violations.length > 0) {
-                    galleryDiv.innerHTML = violations.map(v => {
-                        const siteLabel = (v.site && v.site !== 'Unknown') ? v.site : (v.result || 'Unknown').toUpperCase();
-                        return `
+                    galleryDiv.innerHTML = violations.map(v => `
                         <div class="col-md-4 mb-3">
                             <div class="position-relative">
                                 <img src="/uploads/${v.image_path}" class="snapshot-img" alt="Violation">
-                                <span class="position-absolute top-0 start-0 badge bg-danger m-2">${siteLabel}</span>
+                                <span class="position-absolute top-0 start-0 badge bg-danger m-2">${v.site}</span>
                                 <span class="position-absolute bottom-0 end-0 badge bg-dark m-2">${(v.confidence*100).toFixed(0)}%</span>
                             </div>
                         </div>
-                    `;
-                    }).join('');
+                    `).join('');
                 } else {
                     galleryDiv.innerHTML = '<div class="col-12 text-center text-muted py-4">No violations yet.</div>';
                 }
